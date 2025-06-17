@@ -1,14 +1,17 @@
 $source = "C:\path\to\input"
 $destination = "C:\path\to\aggregated_files"
 
-# Create the destination folder if it doesn't exist
+# Create destination if not exists
 if (!(Test-Path $destination)) {
     New-Item -ItemType Directory -Path $destination
 }
 
-# Copy all files from subfolders to destination
-Get-ChildItem -Path $source -Recurse -File | ForEach-Object {
-    Copy-Item $_.FullName -Destination $destination
+# Get all 'data.csv' files in subfolders
+Get-ChildItem -Path $source -Recurse -Filter "data.csv" | ForEach-Object {
+    $folderName = Split-Path $_.DirectoryName -Leaf
+    $newFileName = "${folderName}_data.csv"
+    Copy-Item $_.FullName -Destination (Join-Path $destination $newFileName)
 }
 
-Write-Host "Done copying all files."
+Write-Host "Done extracting and renaming all data.csv files."
+
