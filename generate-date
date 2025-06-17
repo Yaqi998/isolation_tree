@@ -1,0 +1,13 @@
+from datetime import datetime, timedelta
+
+start_date = datetime.strptime("2025-06-01", "%Y-%m-%d")
+end_date = datetime.strptime("2025-06-15", "%Y-%m-%d")
+
+date_list = []
+
+current = start_date
+while current <= end_date:
+    date_list.append(current.strftime("%Y-%m-%d"))
+    current += timedelta(days=1)
+
+print(date_list)
