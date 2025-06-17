@@ -1,29 +1,30 @@
-sets = {}
-
-for df in list_of_dfs:
-    # Get the hyperparameter name (assume only one unique value per df)
-    hparam = df['hyperparam'].iloc[0]
-    
-    # Convert relevant columns to a tuple set
-    row_ids = set(zip(df['partition'], df['minute_of_the_week'], df['date']))
-    
-    sets[hparam] = row_ids
+import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib_venn import venn5
+from matplotlib_venn import venn5, get_labels
 
-# Get 5 keys
-keys = list(sets.keys())[:5]
+# Assume your big DataFrame is called `df`
+# And the column indicating hyperparam setting is 'hyperparam'
 
-# Compute sets
-s1, s2, s3, s4, s5 = [sets[k] for k in keys]
+# Define the key columns for intersection
+key_cols = ['partition', 'minute_of_the_week', 'date']
 
-# Create a dictionary mapping set identifiers (e.g., '10010') to sizes
-from matplotlib_venn import get_labels
+# Get unique hyperparams
+hyperparams = df['hyperparam'].unique()
 
-set_list = [s1, s2, s3, s4, s5]
-labels = get_labels(set_list, fill='number')
+# Create sets of unique identifiers per hyperparam
+sets = {
+    h: set(map(tuple, df[df['hyperparam'] == h][key_cols].values))
+    for h in hyperparams
+}
 
-# Plot Venn
-venn5(subsets=labels, set_labels=keys)
-plt.title("Overlap of Hyperparameter Runs")
+# Select first 5 hyperparams if there are more
+selected_hparams = list(sets.keys())[:5]
+selected_sets = [sets[h] for h in selected_hparams]
+
+# Generate subset labels (binary string keys like '11010') for venn5
+labels = get_labels(selected_sets, fill='number')
+
+# Plot
+venn5(subsets=labels, set_labels=selected_hparams)
+plt.title("Overlap of Runs Between Hyperparameter Settings")
 plt.show()
