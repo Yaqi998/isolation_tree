@@ -1,0 +1,15 @@
+#!/bin/bash
+
+src_dir="input"
+out_dir="aggregated_files"
+
+mkdir -p "$out_dir"
+
+for file in "$src_dir"/*/*; do
+    # Check if it's a file
+    if [[ -f "$file" ]]; then
+        cp "$file" "$out_dir/"
+    fi
+done
+
+echo "Copied all files to $out_dir"
