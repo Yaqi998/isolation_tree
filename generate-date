@@ -11,3 +11,15 @@ while current <= end_date:
     current += timedelta(days=1)
 
 print(date_list)
+
+
+
+from datetime import datetime
+
+date_str = "2025-06-01"
+date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+
+# weekday() returns 0 for Monday, ..., 6 for Sunday
+is_weekend = date_obj.weekday() >= 5
+
+print(f"{date_str} is a weekend: {is_weekend}")
