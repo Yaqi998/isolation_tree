@@ -1,0 +1,121 @@
+    import numpy as np
+import pandas as pd
+import math
+import random
+
+# ============================
+# Isolation Tree Node
+# ============================
+class ITreeNode:
+    def __init__(self, split_attr=None, split_value=None, left=None, right=None, size=0, depth=0):
+        self.split_attr = split_attr
+        self.split_value = split_value
+        self.left = left
+        self.right = right
+        self.size = size
+        self.depth = depth
+
+# ============================
+# Build an Isolation Tree
+# ============================
+def build_i_tree(data, current_depth, max_depth):
+    n_samples, n_features = data.shape
+    if current_depth >= max_depth or n_samples <= 1:
+        return ITreeNode(size=n_samples, depth=current_depth)
+    
+    # Choose a random feature and random split value
+    split_attr = random.randint(0, n_features - 1)
+    min_val = np.min(data[:, split_attr])
+    max_val = np.max(data[:, split_attr])
+    if min_val == max_val:
+        return ITreeNode(size=n_samples, depth=current_depth)
+
+    split_value = random.uniform(min_val, max_val)
+    
+    left_mask = data[:, split_attr] < split_value
+    right_mask = ~left_mask
+    
+    left = build_i_tree(data[left_mask], current_depth + 1, max_depth)
+    right = build_i_tree(data[right_mask], current_depth + 1, max_depth)
+    
+    return ITreeNode(split_attr, split_value, left, right, size=n_samples, depth=current_depth)
+
+# ============================
+# Path Length Calculation
+# ============================
+def path_length(x, tree: ITreeNode, depth=0):
+    if tree.left is None and tree.right is None:
+        if tree.size <= 1:
+            return depth
+        return depth + c_factor(tree.size)
+    
+    if x[tree.split_attr] < tree.split_value:
+        return path_length(x, tree.left, depth + 1)
+    else:
+        return path_length(x, tree.right, depth + 1)
+
+# ============================
+# c(n): Average Path Length
+# ============================
+def c_factor(n):
+    if n <= 1:
+        return 0
+    return 2 * (np.log(n - 1) + 0.5772156649) - (2 * (n - 1) / n)
+
+# ============================
+# Isolation Forest
+# ============================
+class IsolationForest:
+    def __init__(self, n_trees=100, max_samples=256):
+        self.n_trees = n_trees
+        self.max_samples = max_samples
+        self.trees = []
+
+    def fit(self, X):
+        self.trees = []
+        height_limit = math.ceil(np.log2(self.max_samples))
+        for _ in range(self.n_trees):
+            if X.shape[0] > self.max_samples:
+                sample_indices = np.random.choice(X.shape[0], self.max_samples, replace=False)
+                X_sample = X[sample_indices]
+            else:
+                X_sample = X
+            tree = build_i_tree(X_sample, 0, height_limit)
+            self.trees.append(tree)
+
+    def anomaly_score(self, X):
+        scores = []
+        for x in X:
+            path_lengths = [path_length(x, tree) for tree in self.trees]
+            avg_path_length = np.mean(path_lengths)
+            score = 2 ** (-avg_path_length / c_factor(self.max_samples))
+            scores.append(score)
+        return np.array(scores)
+
+    def predict(self, X, threshold=0.6):
+        scores = self.anomaly_score(X)
+        return (scores > threshold).astype(int), scores
+
+# ============================
+# Example Usage
+# ============================
+if __name__ == "__main__":
+    from sklearn.datasets import make_blobs
+
+    # Create a dataset with some anomalies
+    X, _ = make_blobs(n_samples=300, centers=1, n_features=2, cluster_std=1.0)
+    anomalies = np.random.uniform(low=-6, high=6, size=(20, 2))
+    X_all = np.vstack([X, anomalies])
+
+    clf = IsolationForest(n_trees=100, max_samples=256)
+    clf.fit(X_all)
+
+    predictions, scores = clf.predict(X_all, threshold=0.6)
+
+    # Visualization (optional)
+    import matplotlib.pyplot as plt
+    plt.scatter(X_all[:, 0], X_all[:, 1], c=predictions, cmap='coolwarm', edgecolors='k')
+    plt.title("Anomaly Detection with Isolation Forest")
+    plt.xlabel("Feature 1")
+    plt.ylabel("Feature 2")
+    plt.show()
