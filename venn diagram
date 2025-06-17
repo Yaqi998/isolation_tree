@@ -1,0 +1,29 @@
+sets = {}
+
+for df in list_of_dfs:
+    # Get the hyperparameter name (assume only one unique value per df)
+    hparam = df['hyperparam'].iloc[0]
+    
+    # Convert relevant columns to a tuple set
+    row_ids = set(zip(df['partition'], df['minute_of_the_week'], df['date']))
+    
+    sets[hparam] = row_ids
+import matplotlib.pyplot as plt
+from matplotlib_venn import venn5
+
+# Get 5 keys
+keys = list(sets.keys())[:5]
+
+# Compute sets
+s1, s2, s3, s4, s5 = [sets[k] for k in keys]
+
+# Create a dictionary mapping set identifiers (e.g., '10010') to sizes
+from matplotlib_venn import get_labels
+
+set_list = [s1, s2, s3, s4, s5]
+labels = get_labels(set_list, fill='number')
+
+# Plot Venn
+venn5(subsets=labels, set_labels=keys)
+plt.title("Overlap of Hyperparameter Runs")
+plt.show()
