@@ -28,3 +28,37 @@ labels = get_labels(selected_sets, fill='number')
 venn5(subsets=labels, set_labels=selected_hparams)
 plt.title("Overlap of Runs Between Hyperparameter Settings")
 plt.show()
+
+# use another package
+import pandas as pd
+from upsetplot import UpSet, from_memberships
+import matplotlib.pyplot as plt
+
+# Assume df is your large DataFrame
+key_cols = ['partition', 'minute_of_the_week', 'date']
+
+# Get 5 unique hyperparams
+hyperparams = df['hyperparam'].unique()[:5]
+
+# Build a dictionary of sets
+sets = {
+    h: set(map(tuple, df[df['hyperparam'] == h][key_cols].values))
+    for h in hyperparams
+}
+
+# Build membership list for each record
+all_keys = set().union(*sets.values())
+memberships = []
+
+for k in all_keys:
+    included_in = [name for name, s in sets.items() if k in s]
+    memberships.append(included_in)
+
+# Convert to UpSet-compatible format
+data = from_memberships(memberships)
+
+# Plot
+up = UpSet(data, show_counts=True)
+up.plot()
+plt.title("Intersection of Hyperparameter Runs (UpSet Plot)")
+plt.show()
