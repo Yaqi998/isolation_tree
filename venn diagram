@@ -1,11 +1,12 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib_venn import venn5, venn5_circles
+from matplotlib_venn import venn3, venn3_circles
+from itertools import combinations
 
-# Assuming your dataframe is called 'df' with a column 'hyperparam_type' for the 5 settings
+# Assuming your dataframe is called 'df' with a column 'hyperparam_type' for the 3 settings
 
 # Step 1: Create sets of unique combinations for each hyperparameter type
-hyperparams = df['hyperparam_type'].unique()
+hyperparams = df['hyperparam_type'].unique()[:3]  # Take first 3 if more exist
 sets = {}
 
 for hp in hyperparams:
@@ -15,31 +16,26 @@ for hp in hyperparams:
     # Create tuples for hashability
     sets[hp] = set(unique_combinations.itertuples(index=False, name=None))
 
-# Step 2: Calculate all possible intersections (this gets complex with 5 sets)
-# For visualization, we'll use matplotlib_venn which handles this automatically
+# Step 2: Calculate intersection sizes for venn3
+# venn3 expects sizes in this order:
+# (100, 010, 110, 001, 101, 011, 111)
+# Where:
+# 100 = only A, 010 = only B, 110 = A∩B only, etc.
+
+A, B, C = sets[hyperparams[0]], sets[hyperparams[1]], sets[hyperparams[2]]
+
+subset_sizes = (
+    len(A - B - C),        # Only A
+    len(B - A - C),        # Only B
+    len(A & B - C),        # A and B but not C
+    len(C - A - B),        # Only C
+    len(A & C - B),        # A and C but not B
+    len(B & C - A),        # B and C but not A
+    len(A & B & C)         # All three
 
 # Step 3: Visualize
-plt.figure(figsize=(12, 10))
-
-# venn5 requires knowing the size of all possible intersections
-# We'll need to calculate these:
-from itertools import combinations
-
-# Calculate all subset sizes
-subset_sizes = {}
-for i in range(1, 6):
-    for combo in combinations(hyperparams, i):
-        intersection = sets[combo[0]]
-        for hp in combo[1:]:
-            intersection = intersection & sets[hp]
-        subset_sizes[combo] = len(intersection)
-
-# The venn5 function expects sizes in a specific order:
-# (Abcde, aBcde, ABcde, abCde, AbCde, aBCde, ABCde, abcDe, AbcDe, aBcDe, ABcDe, abCDE, ... etc.)
-# This is complex - you might want to use a helper function or library
-
-# Alternatively, if you have up to 5 hyperparameter settings, you can use:
-venn_labels = [f"HP {i+1}" for i in range(5)]
-venn5(subsets=subset_sizes, set_labels=venn_labels)
-plt.title("Overlap between hyperparameter settings")
+plt.figure(figsize=(10, 8))
+venn3(subsets=subset_sizes, 
+      set_labels=(hyperparams[0], hyperparams[1], hyperparams[2]))
+plt.title("Overlap Between Three Hyperparameter Settings")
 plt.show()
