@@ -1,64 +1,45 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib_venn import venn5, get_labels
+from matplotlib_venn import venn5, venn5_circles
 
-# Assume your big DataFrame is called `df`
-# And the column indicating hyperparam setting is 'hyperparam'
+# Assuming your dataframe is called 'df' with a column 'hyperparam_type' for the 5 settings
 
-# Define the key columns for intersection
-key_cols = ['partition', 'minute_of_the_week', 'date']
+# Step 1: Create sets of unique combinations for each hyperparameter type
+hyperparams = df['hyperparam_type'].unique()
+sets = {}
 
-# Get unique hyperparams
-hyperparams = df['hyperparam'].unique()
+for hp in hyperparams:
+    # Create unique identifiers by combining the three columns
+    subset = df[df['hyperparam_type'] == hp]
+    unique_combinations = subset[['partition', 'minute_of_the_week', 'date']].drop_duplicates()
+    # Create tuples for hashability
+    sets[hp] = set(unique_combinations.itertuples(index=False, name=None))
 
-# Create sets of unique identifiers per hyperparam
-sets = {
-    h: set(map(tuple, df[df['hyperparam'] == h][key_cols].values))
-    for h in hyperparams
-}
+# Step 2: Calculate all possible intersections (this gets complex with 5 sets)
+# For visualization, we'll use matplotlib_venn which handles this automatically
 
-# Select first 5 hyperparams if there are more
-selected_hparams = list(sets.keys())[:5]
-selected_sets = [sets[h] for h in selected_hparams]
+# Step 3: Visualize
+plt.figure(figsize=(12, 10))
 
-# Generate subset labels (binary string keys like '11010') for venn5
-labels = get_labels(selected_sets, fill='number')
+# venn5 requires knowing the size of all possible intersections
+# We'll need to calculate these:
+from itertools import combinations
 
-# Plot
-venn5(subsets=labels, set_labels=selected_hparams)
-plt.title("Overlap of Runs Between Hyperparameter Settings")
-plt.show()
+# Calculate all subset sizes
+subset_sizes = {}
+for i in range(1, 6):
+    for combo in combinations(hyperparams, i):
+        intersection = sets[combo[0]]
+        for hp in combo[1:]:
+            intersection = intersection & sets[hp]
+        subset_sizes[combo] = len(intersection)
 
-# use another package
-import pandas as pd
-from upsetplot import UpSet, from_memberships
-import matplotlib.pyplot as plt
+# The venn5 function expects sizes in a specific order:
+# (Abcde, aBcde, ABcde, abCde, AbCde, aBCde, ABCde, abcDe, AbcDe, aBcDe, ABcDe, abCDE, ... etc.)
+# This is complex - you might want to use a helper function or library
 
-# Assume df is your large DataFrame
-key_cols = ['partition', 'minute_of_the_week', 'date']
-
-# Get 5 unique hyperparams
-hyperparams = df['hyperparam'].unique()[:5]
-
-# Build a dictionary of sets
-sets = {
-    h: set(map(tuple, df[df['hyperparam'] == h][key_cols].values))
-    for h in hyperparams
-}
-
-# Build membership list for each record
-all_keys = set().union(*sets.values())
-memberships = []
-
-for k in all_keys:
-    included_in = [name for name, s in sets.items() if k in s]
-    memberships.append(included_in)
-
-# Convert to UpSet-compatible format
-data = from_memberships(memberships)
-
-# Plot
-up = UpSet(data, show_counts=True)
-up.plot()
-plt.title("Intersection of Hyperparameter Runs (UpSet Plot)")
+# Alternatively, if you have up to 5 hyperparameter settings, you can use:
+venn_labels = [f"HP {i+1}" for i in range(5)]
+venn5(subsets=subset_sizes, set_labels=venn_labels)
+plt.title("Overlap between hyperparameter settings")
 plt.show()
