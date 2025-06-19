@@ -1,0 +1,46 @@
+#visualization
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+pivot = df.pivot_table(index='model1_anomalies', columns='model2_anomalies', values='total', aggfunc='sum')
+
+plt.figure(figsize=(10, 8))
+sns.heatmap(pivot, cmap='viridis', norm='log')  # use norm='log' if values vary widely
+plt.title('Heatmap of Anomalies by Model 1 vs Model 2')
+plt.xlabel('Model 2 Anomalies')
+plt.ylabel('Model 1 Anomalies')
+plt.show()
+
+
+import pandas as pd
+
+# Melt overlap columns into long form
+overlaps = df[['pos1_neg2', 'neg1_pos2', 'pos1_pos2', 'neg1_neg2']].sum().reset_index()
+overlaps.columns = ['scenario', 'count']
+
+overlaps.sort_values('count', ascending=False).plot.bar(x='scenario', y='count', legend=False)
+plt.title('Overall Agreement/Disagreement Counts Between Models')
+plt.ylabel('Total Count')
+plt.show()
+
+
+import seaborn as sns
+
+plt.figure(figsize=(8, 4))
+sns.histplot(df['total'], bins=100, log_scale=True)
+plt.title('Distribution of Scenario Sizes')
+plt.xlabel('Total Data Points in Scenario')
+plt.ylabel('Number of Scenarios')
+plt.show()
+
+
+
+df['disagreement'] = abs(df['pos1_neg2'] - df['neg1_pos2'])
+top_disagreements = df.nlargest(20, 'disagreement')
+
+top_disagreements[['pos1_neg2', 'neg1_pos2', 'pos1_pos2', 'neg1_neg2']].plot(kind='bar', stacked=True, figsize=(12, 6))
+plt.title('Top 20 Scenarios with Largest Disagreement')
+plt.xlabel('Scenario Index')
+plt.ylabel('Counts')
+plt.show()
