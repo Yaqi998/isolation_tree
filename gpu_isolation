@@ -1,0 +1,35 @@
+from cuml.ensemble import IsolationForest as cuIsolationForest
+import cupy as cp  # GPU array library
+import pandas as pd
+
+def train_cuml_isolation_forest(X, params):
+    model = cuIsolationForest(
+        n_estimators=params.get("n_estimators", 100),
+        max_samples=params.get("max_samples", 0.8),
+        contamination=params.get("contamination", 0.1),
+        max_features=params.get("max_features", 1.0),
+        random_state=42
+    )
+    
+    # Convert pandas → cupy arrays (cuML requires GPU input)
+    X_gpu = cp.asarray(X.values)
+    model.fit(X_gpu)
+    
+    preds = model.predict(X_gpu)  # 1 = normal, -1 = anomaly
+    scores = model.decision_function(X_gpu)
+
+    return preds.get(), scores.get()  
+
+# convert cupy → numpy
+
+from hyperopt import fmin, tpe, hp, Trials, STATUS_OK
+from sklearn.metrics import f1_score
+
+def objective(params):
+    try:
+        preds, _ = train_cuml_isolation_forest(X_train, params)
+        y_pred = (preds == -1).astype(int)
+        loss = -f1_score(y_true, y_pred)
+        return {'loss': loss, 'status': STATUS_OK}
+    except Exception as e:
+        return {'loss': float('inf'), 'status': STATUS_OK}
