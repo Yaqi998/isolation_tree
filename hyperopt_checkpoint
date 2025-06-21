@@ -1,0 +1,46 @@
+import pickle
+from hyperopt import fmin, tpe, hp, Trials, STATUS_OK
+import os
+
+# Define the objective function
+def objective(params):
+    x = params['x']
+    loss = (x - 3) ** 2
+    return {'loss': loss, 'status': STATUS_OK}
+
+# Define search space
+space = {
+    'x': hp.uniform('x', -10, 10)
+}
+
+# Check if there's a saved trials file
+TRIALS_FILE = 'hyperopt_trials.pkl'
+if os.path.exists(TRIALS_FILE):
+    with open(TRIALS_FILE, 'rb') as f:
+        trials = pickle.load(f)
+    print("Loaded existing trials.")
+else:
+    trials = Trials()
+
+# Run optimization with checkpointing
+MAX_EVALS = 100
+current_eval = len(trials.trials)
+
+for i in range(current_eval, MAX_EVALS):
+    print(f"Running trial {i + 1} of {MAX_EVALS}...")
+    
+    # Run one more trial
+    fmin(
+        fn=objective,
+        space=space,
+        algo=tpe.suggest,
+        max_evals=i + 1,  # Important: increment by one each time
+        trials=trials,
+        show_progressbar=False,
+        verbose=0
+    )
+
+    # Save progress after each trial
+    with open(TRIALS_FILE, 'wb') as f:
+        pickle.dump(trials, f)
+    print(f"Checkpoint saved at trial {i + 1}.\n")
