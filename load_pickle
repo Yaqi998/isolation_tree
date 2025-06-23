@@ -1,0 +1,61 @@
+import os
+import pickle
+import numpy as np
+from hyperopt import space_eval
+from sklearn.ensemble import IsolationForest
+
+# === Setup ===
+FEATURE_COLS = [
+    'state', 'stalledTime', 'minute_of_the_week',
+    'threshold_type_stalledTime_8',
+    'threshold_type_stalledTime_learnt',
+    'threshold_type_stalledTimme_maintenance'
+]
+
+GROUP_COLS = ['partition_num', 'minute_of_day', 'weekdayWeekend']
+PKL_DIR = './pkl_dir'  # Update this to your actual directory
+MODEL_SUFFIX = '_hyperopt_trials.pkl'
+
+# Define the same space used during hyperopt (adjust if needed)
+space = {
+    'n_estimators': hp.choice('n_estimators', list(range(50, 101))),
+    'max_samples': hp.uniform('max_samples', 0.1, 1.0),
+    'contamination': hp.uniform('contamination', 0.0, 0.5)
+}
+
+# === Initialize prediction column ===
+test_df['isolation_pred'] = np.nan
+
+# === Group the test data ===
+grouped = test_df.groupby(GROUP_COLS)
+
+# === Apply models per group ===
+for group_key, group_data in grouped:
+    part, minute, day_type = group_key
+    file_name = f"{part}_{minute}_{day_type}_hyperopt_trials.pkl"
+    file_path = os.path.join(PKL_DIR, file_name)
+
+    if os.path.exists(file_path):
+        with open(file_path, 'rb') as f:
+            obj = pickle.load(f)
+
+        # Extract best hyperparams
+        if isinstance(obj, dict):
+            best_params = obj
+        else:
+            best_params = space_eval(space, obj.argmin)
+
+        # Fit model to group test data
+        model = IsolationForest(**best_params, random_state=42)
+        X_test = group_data[FEATURE_COLS]
+
+        try:
+            model.fit(X_test)  # Note: using test data itself for fit+predict (unless otherwise provided)
+            preds = model.predict(X_test)
+            test_df.loc[group_data.index, 'isolation_pred'] = preds
+        except Exception as e:
+            print(f"Error processing group {group_key}: {e}")
+            test_df.loc[group_data.index, 'isolation_pred'] = np.nan
+    else:
+        # No model available for this group
+        test_df.loc[group_data.index, 'isolation_pred'] = np.nan
